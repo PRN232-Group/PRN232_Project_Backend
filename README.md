@@ -1,4 +1,3 @@
-# PRN232_Project_Frontend
 
 - Về role team: team 5 người thì 1 front, 4 back (do front không bị hỏi kiến trúc và code nên ko cần chú tâm quá hoặc bá hơn gánh back cũng đc =)) )
 
