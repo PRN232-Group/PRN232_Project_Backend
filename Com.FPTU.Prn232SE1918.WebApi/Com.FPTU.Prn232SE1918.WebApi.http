@@ -1,0 +1,6 @@
+@Com.FPTU.Prn232SE1918.WebApi_HostAddress = http://localhost:5045
+
+GET {{Com.FPTU.Prn232SE1918.WebApi_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

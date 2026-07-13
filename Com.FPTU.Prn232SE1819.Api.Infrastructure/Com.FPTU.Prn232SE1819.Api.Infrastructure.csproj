@@ -1,0 +1,14 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Com.FPTU.Prn232SE1918.Api.Application\Com.FPTU.Prn232SE1918.Api.Application.csproj" />
+    <ProjectReference Include="..\Com.FPTU.Prn232SE1918.MssqlServer.Entity\Com.FPTU.Prn232SE1918.Api.MssqlServer.Entity.csproj" />
+  </ItemGroup>
+
+</Project>
