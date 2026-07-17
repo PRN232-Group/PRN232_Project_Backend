@@ -1,0 +1,52 @@
+using Com.FPTU.Prn232SE1819.Api.Infrastructure.Context;
+using Com.FPTU.Prn232SE1819.Api.Infrastructure.Repositories;
+using Com.FPTU.Prn232SE1819.Api.Application.Interfaces.Common;
+using Com.FPTU.Prn232SE1819.Api.Application.Interfaces.Repositories;
+using Com.FPTU.Prn232SE1819.Api.Application.Interfaces.Services;
+using Com.FPTU.Prn232SE1819.Api.Entity.Models;
+using Com.FPTU.Prn232SE1819.Api.Services.Services;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace Com.FPTU.Prn232SE1819.Api.Services.Extensions;
+
+public static class EcommerceContextServiceExtensions
+{
+    public static IServiceCollection EcommerceInfrastructureDatabase(this IServiceCollection services, IConfiguration config)
+    {
+        services.AddDbContext<InteriorStudioDbContext>(options =>
+        {
+            options.UseSqlServer(config.GetConnectionString("InteriorStudioDbConn"),
+                sqlOptions => sqlOptions.CommandTimeout(60));
+        });
+
+        services.AddScoped<Func<InteriorStudioDbContext>>(
+            provider => () => provider.GetService<InteriorStudioDbContext>()!);
+
+        services.AddScoped<DbFactoryContext>();
+        services.AddScoped<IApplicationDbContext, ApplicationDbContext>();
+        services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+        return services;
+    }
+
+    public static IServiceCollection AddDataServices(this IServiceCollection services)
+    {
+        services.AddScoped<IRoleService, RoleService>();
+        services.AddScoped<IPermissionService, PermissionService>();
+        services.AddScoped<IUserService, UserService>();
+        services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<IEmailSender, SmtpEmailSender>();
+        services.AddScoped<ICategoryService, CategoryService>();
+        services.AddScoped<IProductService, ProductService>();
+        services.AddScoped<IReviewService, ReviewService>();
+        services.AddScoped<ICartService, CartService>();
+        services.AddScoped<IOrderService, OrderService>();
+        services.AddScoped<IInteriorDesignService, InteriorDesignService>();
+        services.AddScoped<IContentService, ContentService>();
+        services.AddScoped<IQuotationRequestService, QuotationRequestService>();
+        services.AddScoped<IQuotationService, QuotationService>();
+        return services;
+    }
+}

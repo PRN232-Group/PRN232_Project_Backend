@@ -1,24 +1,20 @@
-﻿
-using Microsoft.EntityFrameworkCore.Migrations;
-using Microsoft.EntityFrameworkCore;
 using Com.FPTU.Prn232SE1819.Api.Infrastructure.Context;
-using Com.FPTU.Prn232SE1918.MssqlServer.Entity.Models;
 using Com.FPTU.Prn232SE1819.Api.Infrastructure.Repositories;
-using Com.FPTU.Prn232SE1918.Api.Application.Interfaces.Repositories;
-using Com.FPTU.Prn232SE1918.Api.Application.Interfaces.Common;
+using Com.FPTU.Prn232SE1819.Api.Application.Interfaces.Common;
+using Com.FPTU.Prn232SE1819.Api.Application.Interfaces.Repositories;
+using Com.FPTU.Prn232SE1819.Api.Entity.Models;
+using Microsoft.EntityFrameworkCore;
 
+var options = new DbContextOptionsBuilder<InteriorStudioDbContext>()
+    .UseSqlServer("Server=(localdb)\\MSSQLLocalDB;Database=InteriorStudio;User Id=sa;Password=1234567890;TrustServerCertificate=True")
+    .Options;
 
-//1. lay ra 1 mang cac products => test xem repository chay the nao?
-DbFactoryContext dbContext =
-    new DbFactoryContext(() => new ProductDbContext());
+var dbFactory = new DbFactoryContext(() => new InteriorStudioDbContext(options));
+IApplicationDbContext db = new ApplicationDbContext(dbFactory);
+IRepository<Role> roleRepo = new Repository<Role>(db);
 
-
-//2. init ApplicationDbContext
-IApplicationDbContext db = new ApplicationDbContext(dbContext);
-//3. Khoi tao Repository
-IRepository<Product> productRepository = new Repository<Product>(db);
-
-//4. Show data
-var data = productRepository.Find(1);
-
-Console.WriteLine($"Product ID: {data.ProductId}, Description: {data.Description} and Product Name: {data.Name}");
+var role = roleRepo.Find(1);
+if (role != null)
+    Console.WriteLine($"Role ID: {role.Id}, Name: {role.Name}");
+else
+    Console.WriteLine("No role with Id=1. Seed Roles first.");
