@@ -7,7 +7,7 @@ API ASP.NET cho dự án Interior Studio (FE: repo `PRN232_Project_Frontend`).
 | | Backend (repo này) | Frontend |
 |---|-------------------|----------|
 | **GitHub** | https://github.com/PRN232-Group/PRN232_Project_Backend.git | https://github.com/PRN232-Group/PRN232_Project_Frontend.git |
-| **Nhánh làm việc** | `backend` | `main` |
+| **Nhánh làm việc** | `theo member` | `theo member` |
 | **Thư mục local** | `d:\PRN232\Project` | `d:\PRN232\Frontend_Project` |
 
 ```bash
