@@ -166,7 +166,35 @@ public class OrderService : IOrderService
     {
         var order = await OrderQuery().FirstOrDefaultAsync(o => o.Id == id)
             ?? throw new KeyNotFoundException($"Order {id} not found.");
-        order.Status = dto.Status.Trim();
+
+        // --- CODE CỦA BẠN ĐƯỢC THÊM VÀO TỪ ĐÂY ---
+        var newStatus = dto.Status.Trim();
+
+        // 1. Chặn lại ngay nếu đơn hàng đã hoàn thành hoặc đã hủy
+        if (order.Status == "Completed" || order.Status == "Cancelled")
+        {
+            throw new InvalidOperationException("Đơn hàng đã chốt, không thể đổi trạng thái.");
+        }
+
+        // 2. Kiểm tra luồng đi hợp lệ (tịnh tiến dần)
+        bool isValid = false;
+
+        if (newStatus == "Cancelled")
+        {
+            isValid = true; // Cho phép hủy bất cứ lúc nào (vì đã qua vòng chặn bên trên)
+        }
+        else if (order.Status == "Pending" && newStatus == "Processing") isValid = true;
+        else if (order.Status == "Processing" && newStatus == "Shipping") isValid = true;
+        else if (order.Status == "Shipping" && newStatus == "Completed") isValid = true;
+
+        if (!isValid)
+        {
+            throw new InvalidOperationException($"Không thể chuyển trạng thái từ {order.Status} sang {newStatus}.");
+        }
+        // --- KẾT THÚC PHẦN CODE CỦA BẠN ---
+
+        // --- ĐÂY LÀ CODE GỐC CỦA TRUNG ĐƯỢC GIỮ NGUYÊN ---
+        order.Status = newStatus;
         order.UpdatedAt = VnDateTime.Now;
         await _uow.BeginTransactionAsync();
         try
@@ -217,5 +245,11 @@ public class OrderService : IOrderService
             CreatedAt = o.CreatedAt,
             Items = items,
         };
+    }
+
+    public async Task<bool> UpdateOrderStatusAsync(int orderId, string newStatus)
+    {
+        await UpdateStatusAsync(orderId, new UpdateOrderStatusDto { Status = newStatus });
+        return true;
     }
 }

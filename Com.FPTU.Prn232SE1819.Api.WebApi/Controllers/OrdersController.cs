@@ -54,5 +54,6 @@ public class OrdersController : ControllerBase
     {
         try { return Ok(await _orders.UpdateStatusAsync(id, dto)); }
         catch (KeyNotFoundException) { return NotFound(); }
+        catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
     }
 }

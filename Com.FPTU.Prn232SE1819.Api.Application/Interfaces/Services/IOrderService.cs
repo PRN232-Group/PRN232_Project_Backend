@@ -9,4 +9,6 @@ public interface IOrderService
     Task<OrderDto?> GetByIdAsync(int id, int? requesterId, string? requesterRole);
     Task<OrderDto> CheckoutAsync(int userId, CheckoutRequestDto dto);
     Task<OrderDto> UpdateStatusAsync(int id, UpdateOrderStatusDto dto);
+
+    Task<bool> UpdateOrderStatusAsync(int orderId, string newStatus);
 }
