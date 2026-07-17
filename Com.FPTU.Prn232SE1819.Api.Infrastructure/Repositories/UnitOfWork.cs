@@ -1,5 +1,5 @@
-﻿using Com.FPTU.Prn232SE1918.Api.Application.Interfaces.Common;
-using Com.FPTU.Prn232SE1918.Api.Application.Interfaces.Repositories;
+using Com.FPTU.Prn232SE1819.Api.Application.Interfaces.Common;
+using Com.FPTU.Prn232SE1819.Api.Application.Interfaces.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using System.Data;

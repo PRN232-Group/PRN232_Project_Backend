@@ -1,9 +1,0 @@
-<Solution>
-  <Project Path="Com.FPTU.Prn232SE1819.Api.Caching/Com.FPTU.Prn232SE1819.Api.Caching.csproj" Id="ed34bc9a-7f4c-4339-9978-902dbedf0bf3" />
-  <Project Path="Com.FPTU.Prn232SE1819.Api.Infrastructure/Com.FPTU.Prn232SE1819.Api.Infrastructure.csproj" Id="ffbb57df-ae01-44f6-8cff-e1a24de03cfd" />
-  <Project Path="Com.FPTU.Prn232SE1819.Api.Test/Com.FPTU.Prn232SE1819.Api.Test.csproj" Id="b00d300c-7a40-48c6-aae3-52d2fb182658" />
-  <Project Path="Com.FPTU.Prn232SE1819.Api.Web/Com.FPTU.Prn232SE1819.Api.Web.csproj" Id="e36edc14-ea31-428d-9642-7c4d12478992" />
-  <Project Path="Com.FPTU.Prn232SE1918.Api.Application/Com.FPTU.Prn232SE1918.Api.Application.csproj" Id="4706cad2-6bb4-4081-ad15-f00f23f7fd39" />
-  <Project Path="Com.FPTU.Prn232SE1918.MssqlServer.Entity/Com.FPTU.Prn232SE1918.Api.MssqlServer.Entity.csproj" />
-  <Project Path="Com.FPTU.Prn232SE1919.Services/Com.FPTU.Prn232SE1919.Services.csproj" Id="ebd6d94f-0355-4bbb-b8a7-087ff605e9e7" />
-</Solution>

@@ -1,0 +1,9 @@
+<Solution>
+  <Project Path="Com.FPTU.Prn232SE1819.Api.Caching/Com.FPTU.Prn232SE1819.Api.Caching.csproj" />
+  <Project Path="Com.FPTU.Prn232SE1819.Api.Entity/Com.FPTU.Prn232SE1819.Api.Entity.csproj" />
+  <Project Path="Com.FPTU.Prn232SE1819.Api.Application/Com.FPTU.Prn232SE1819.Api.Application.csproj" />
+  <Project Path="Com.FPTU.Prn232SE1819.Api.Infrastructure/Com.FPTU.Prn232SE1819.Api.Infrastructure.csproj" />
+  <Project Path="Com.FPTU.Prn232SE1819.Api.Services/Com.FPTU.Prn232SE1819.Api.Services.csproj" />
+  <Project Path="Com.FPTU.Prn232SE1819.Api.WebApi/Com.FPTU.Prn232SE1819.Api.WebApi.csproj" />
+  <Project Path="Com.FPTU.Prn232SE1819.Api.Test/Com.FPTU.Prn232SE1819.Api.Test.csproj" />
+</Solution>
