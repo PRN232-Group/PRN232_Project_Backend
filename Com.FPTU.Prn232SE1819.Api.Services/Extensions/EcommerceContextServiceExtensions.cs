@@ -48,6 +48,8 @@ public static class EcommerceContextServiceExtensions
         services.AddScoped<IQuotationRequestService, QuotationRequestService>();
         services.AddScoped<IQuotationService, QuotationService>();
         services.AddScoped<IAnalyticsService, AnalyticsService>();
+        services.AddScoped<IDesignRequestService, DesignRequestService>();
+        services.AddScoped<IChatService, ChatService>();
         return services;
     }
 }

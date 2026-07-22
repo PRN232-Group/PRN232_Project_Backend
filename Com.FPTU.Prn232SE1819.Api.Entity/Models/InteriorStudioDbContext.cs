@@ -60,7 +60,11 @@ public partial class InteriorStudioDbContext : DbContext
     public virtual DbSet<Quotation> Quotations { get; set; }
 
     public virtual DbSet<QuotationProduct> QuotationProducts { get; set; }
-
+    public virtual DbSet<DesignRequest> DesignRequests { get; set; }
+    public virtual DbSet<DesignRequestProduct> DesignRequestProducts { get; set; }
+    public virtual DbSet<DesignRequestAttachment> DesignRequestAttachments { get; set; }
+    public virtual DbSet<ChatThread> ChatThreads { get; set; }
+    public virtual DbSet<ChatMessage> ChatMessages { get; set; }
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Cart>(entity =>
@@ -442,9 +446,11 @@ public partial class InteriorStudioDbContext : DbContext
                 .HasForeignKey(d => d.ProductId)
                 .OnDelete(DeleteBehavior.ClientSetNull);
         });
-
+        modelBuilder.Entity<DesignRequestProduct>()
+            .HasKey(dp => new { dp.DesignRequestId, dp.ProductId });
         OnModelCreatingPartial(modelBuilder);
     }
 
     partial void OnModelCreatingPartial(ModelBuilder modelBuilder);
+
 }
