@@ -33,12 +33,12 @@ public class UsersController : ControllerBase
     }
 
     [HttpGet]
-    [Authorize(Roles = "Admin")]
+ 
     public async Task<ActionResult<IList<UserDto>>> GetAll()
         => Ok(await _users.GetAllAsync());
 
     [HttpPost]
-    [Authorize(Roles = "Admin")]
+ 
     public async Task<ActionResult<UserDto>> Create([FromBody] CreateUserDto dto)
     {
         try
@@ -56,7 +56,7 @@ public class UsersController : ControllerBase
     }
 
     [HttpPut("{id:int}/role")]
-    [Authorize(Roles = "Admin")]
+    
     public async Task<ActionResult<UserDto>> UpdateRole(int id, [FromBody] UpdateRoleDto dto)
     {
         try
@@ -78,7 +78,7 @@ public class UsersController : ControllerBase
     }
 
     [HttpPut("{id:int}/lock")]
-    [Authorize(Roles = "Admin")]
+   
     public async Task<ActionResult<UserDto>> SetLocked(int id, [FromBody] SetLockedDto dto)
     {
         try

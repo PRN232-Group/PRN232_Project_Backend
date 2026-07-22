@@ -10,8 +10,13 @@ namespace Com.FPTU.Prn232SE1819.Api.Services.Services;
 public class OrderService : IOrderService
 {
     private readonly IUnitOfWork _uow;
+    private readonly IAuditService _audit;
 
-    public OrderService(IUnitOfWork uow) => _uow = uow;
+    public OrderService(IUnitOfWork uow, IAuditService audit)
+    {
+        _uow = uow;
+        _audit = audit;
+    }
 
     public async Task<IList<OrderDto>> GetMineAsync(int userId)
     {
@@ -162,12 +167,13 @@ public class OrderService : IOrderService
         return (await GetByIdAsync(order.Id, userId, "Customer"))!;
     }
 
-    public async Task<OrderDto> UpdateStatusAsync(int id, UpdateOrderStatusDto dto)
+    public async Task<OrderDto> UpdateStatusAsync(int id, UpdateOrderStatusDto dto, int? actorUserId)
     {
         var order = await OrderQuery().FirstOrDefaultAsync(o => o.Id == id)
             ?? throw new KeyNotFoundException($"Order {id} not found.");
 
         // --- CODE CỦA BẠN ĐƯỢC THÊM VÀO TỪ ĐÂY ---
+        var oldStatus = order.Status;
         var newStatus = dto.Status.Trim();
 
         // 1. Chặn lại ngay nếu đơn hàng đã hoàn thành hoặc đã hủy
@@ -207,6 +213,13 @@ public class OrderService : IOrderService
             await _uow.RollbackTransactionAsync();
             throw;
         }
+
+        await _audit.LogAsync(
+            action: "UPDATE_ORDER_STATUS",
+            entity: "Order",
+            entityId: order.Id.ToString(),
+            detail: $"Order status changed from {oldStatus} to {newStatus}.",
+            actorUserId: actorUserId);
         return ToDto(order);
     }
 
@@ -249,7 +262,7 @@ public class OrderService : IOrderService
 
     public async Task<bool> UpdateOrderStatusAsync(int orderId, string newStatus)
     {
-        await UpdateStatusAsync(orderId, new UpdateOrderStatusDto { Status = newStatus });
+        await UpdateStatusAsync(orderId, new UpdateOrderStatusDto { Status = newStatus }, actorUserId: null);
         return true;
     }
 }

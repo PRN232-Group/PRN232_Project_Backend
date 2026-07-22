@@ -2,6 +2,7 @@ using Com.FPTU.Prn232SE1819.Api.Application.Dtos;
 using Com.FPTU.Prn232SE1819.Api.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace Com.FPTU.Prn232SE1819.Api.WebApi.Controllers;
 
@@ -14,6 +15,8 @@ public class SalesOrdersController : ControllerBase
 
     public SalesOrdersController(IOrderService orders) => _orders = orders;
 
+    private int CurrentUserId => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
     [HttpGet]
     public async Task<ActionResult<IList<OrderDto>>> GetAll()
         => Ok(await _orders.GetAllAsync());
@@ -21,7 +24,7 @@ public class SalesOrdersController : ControllerBase
     [HttpPut("{id:int}")]
     public async Task<ActionResult<OrderDto>> Update(int id, [FromBody] UpdateOrderStatusDto dto)
     {
-        try { return Ok(await _orders.UpdateStatusAsync(id, dto)); }
+        try { return Ok(await _orders.UpdateStatusAsync(id, dto, CurrentUserId)); }
         catch (KeyNotFoundException) { return NotFound(); }
     }
 }

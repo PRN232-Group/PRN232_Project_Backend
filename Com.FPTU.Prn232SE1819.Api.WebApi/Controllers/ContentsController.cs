@@ -21,6 +21,14 @@ public class ContentsController : ControllerBase
     public async Task<ActionResult<IList<ContentDto>>> GetAll()
         => Ok(await _contents.GetAllAsync(publishedOnly: !IsAdmin));
 
+    [HttpGet("/api/Blog")]
+    [AllowAnonymous]
+    public async Task<ActionResult<IList<ContentDto>>> GetBlogPosts()
+    {
+        var list = await _contents.GetAllAsync(publishedOnly: true);
+        return Ok(list.Where(x => string.Equals(x.Type, "Blog", StringComparison.OrdinalIgnoreCase)).ToList());
+    }
+
     [HttpGet("by-slug/{slug}")]
     [AllowAnonymous]
     public async Task<ActionResult<ContentDto>> GetBySlug(string slug)

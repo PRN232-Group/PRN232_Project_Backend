@@ -9,8 +9,13 @@ namespace Com.FPTU.Prn232SE1819.Api.Services.Services;
 public class PermissionService : IPermissionService
 {
     private readonly IUnitOfWork _uow;
+    private readonly IAuditService _audit;
 
-    public PermissionService(IUnitOfWork uow) => _uow = uow;
+    public PermissionService(IUnitOfWork uow, IAuditService audit)
+    {
+        _uow = uow;
+        _audit = audit;
+    }
 
     public async Task<PermissionMatrixDto> GetMatrixAsync()
     {
@@ -59,7 +64,7 @@ public class PermissionService : IPermissionService
         };
     }
 
-    public async Task SetRolePermissionsAsync(int roleId, SetRolePermissionsDto dto)
+    public async Task SetRolePermissionsAsync(int roleId, SetRolePermissionsDto dto, int actorUserId)
     {
         var role = await _uow.Repository<Role>().FindAsync(roleId)
             ?? throw new KeyNotFoundException($"Role {roleId} not found.");
@@ -107,6 +112,13 @@ public class PermissionService : IPermissionService
             await _uow.RollbackTransactionAsync();
             throw;
         }
+
+        await _audit.LogAsync(
+            action: "UPDATE_PERMISSIONS",
+            entity: "RolePermission",
+            entityId: roleId.ToString(),
+            detail: $"Updated {pages.Count} permissions for role {role.Name}.",
+            actorUserId: actorUserId);
     }
 
     public async Task<IReadOnlyList<string>> GetPageKeysForRoleAsync(int roleId)

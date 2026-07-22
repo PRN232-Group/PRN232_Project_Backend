@@ -20,6 +20,8 @@ public class PermissionsController : ControllerBase
         _roles = roles;
     }
 
+    private int CurrentUserId => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
     /// <summary>Quyền của user đang đăng nhập (pageKeys).</summary>
     [HttpGet("me")]
     public async Task<ActionResult<MyPermissionsDto>> Mine()
@@ -49,7 +51,7 @@ public class PermissionsController : ControllerBase
     {
         try
         {
-            await _permissions.SetRolePermissionsAsync(roleId, dto);
+            await _permissions.SetRolePermissionsAsync(roleId, dto, CurrentUserId);
             return Ok(new { success = true });
         }
         catch (KeyNotFoundException)

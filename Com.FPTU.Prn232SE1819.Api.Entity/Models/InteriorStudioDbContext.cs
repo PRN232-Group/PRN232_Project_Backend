@@ -61,6 +61,8 @@ public partial class InteriorStudioDbContext : DbContext
 
     public virtual DbSet<QuotationProduct> QuotationProducts { get; set; }
 
+    public virtual DbSet<SystemLog> SystemLogs { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Cart>(entity =>
@@ -252,6 +254,19 @@ public partial class InteriorStudioDbContext : DbContext
             entity.Property(e => e.Name).HasMaxLength(150);
             entity.Property(e => e.Section).HasMaxLength(30);
             entity.Property(e => e.IsActive).HasDefaultValue(true);
+        });
+
+        modelBuilder.Entity<SystemLog>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.ToTable("SystemLogs");
+            entity.HasIndex(e => e.CreatedAt, "IX_SystemLogs_CreatedAt");
+            entity.HasIndex(e => e.Action, "IX_SystemLogs_Action");
+            entity.HasIndex(e => e.Entity, "IX_SystemLogs_Entity");
+            entity.Property(e => e.Action).HasMaxLength(80);
+            entity.Property(e => e.Entity).HasMaxLength(80);
+            entity.Property(e => e.EntityId).HasMaxLength(80);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(sysutcdatetime())");
         });
 
         modelBuilder.Entity<RolePermission>(entity =>
