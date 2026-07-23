@@ -26,9 +26,17 @@ public sealed class Repository<T> : IRepository<T> where T : class
                 await ApplicationDbContext.DbContext.SaveChangesAsync();
             }
         }
-        catch (Exception ex)
+        catch (DbUpdateException ex)
         {
-            throw ex;
+            Console.WriteLine(ex.ToString());
+
+            if (ex.InnerException != null)
+            {
+                Console.WriteLine("Inner Exception:");
+                Console.WriteLine(ex.InnerException.ToString());
+            }
+
+            throw;
         }
     }
 
@@ -49,7 +57,12 @@ public sealed class Repository<T> : IRepository<T> where T : class
 
     public async Task DeleteRangeAsync(IEnumerable<T> entities, bool saveChanges = true)
     {
-        await DeleteRangeAsync(entities, saveChanges);
+        Entities.RemoveRange(entities);
+
+        if (saveChanges)
+        {
+            await ApplicationDbContext.DbContext.SaveChangesAsync();
+        }
     }
 
     public T Find(params object[] keyValues)
@@ -64,14 +77,26 @@ public sealed class Repository<T> : IRepository<T> where T : class
 
     public async Task InsertAsync(T entity, bool saveChanges = true)
     {
-        await Entities.AddAsync(entity);
-        //su dung den UnitOfWork => commit giao dich (insert vao db)
-        if (saveChanges)
+        try
         {
-            await ApplicationDbContext.DbContext.SaveChangesAsync();
+            await ApplicationDbContext.Set<T>().AddAsync(entity);
+
+            if (saveChanges)
+            {
+                await ApplicationDbContext.SaveChangesAsync();
+            }
+        }
+        catch (DbUpdateException ex)
+        {
+            Console.WriteLine("===== DB ERROR =====");
+            Console.WriteLine(ex.Message);
+
+            Console.WriteLine("===== INNER ERROR =====");
+            Console.WriteLine(ex.InnerException?.Message);
+
+            throw;
         }
     }
-
     public async Task InsertRangeAsync(IEnumerable<T> entities, bool saveChanges = true)
     {
         await ApplicationDbContext.DbContext.AddRangeAsync(entities);

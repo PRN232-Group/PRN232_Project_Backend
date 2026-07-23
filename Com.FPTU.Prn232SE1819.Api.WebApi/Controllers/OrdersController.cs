@@ -52,7 +52,7 @@ public class OrdersController : ControllerBase
     [Authorize(Roles = "Sales,Admin")]
     public async Task<ActionResult<OrderDto>> UpdateStatus(int id, [FromBody] UpdateOrderStatusDto dto)
     {
-        try { return Ok(await _orders.UpdateStatusAsync(id, dto)); }
+        try { return Ok(await _orders.UpdateStatusAsync(id, dto, CurrentUserId)); }
         catch (KeyNotFoundException) { return NotFound(); }
         catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
     }

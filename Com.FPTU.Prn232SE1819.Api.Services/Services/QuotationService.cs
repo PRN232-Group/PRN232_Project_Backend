@@ -10,8 +10,13 @@ namespace Com.FPTU.Prn232SE1819.Api.Services.Services;
 public class QuotationService : IQuotationService
 {
     private readonly IUnitOfWork _uow;
+    private readonly IAuditService _audit;
 
-    public QuotationService(IUnitOfWork uow) => _uow = uow;
+    public QuotationService(IUnitOfWork uow, IAuditService audit)
+    {
+        _uow = uow;
+        _audit = audit;
+    }
 
     public async Task<IList<QuotationDto>> GetAllAsync()
     {
@@ -141,6 +146,8 @@ public class QuotationService : IQuotationService
         var entity = await Query().FirstOrDefaultAsync(q => q.Id == id)
             ?? throw new KeyNotFoundException($"Quotation {id} not found.");
 
+        var previousStatus = entity.Status;
+
         if (!string.IsNullOrWhiteSpace(dto.Title)) entity.Title = dto.Title.Trim();
         if (dto.Amount is decimal amt && amt > 0) entity.Amount = amt;
         var notes = dto.Notes ?? dto.Note;
@@ -166,6 +173,16 @@ public class QuotationService : IQuotationService
         {
             await _uow.RollbackTransactionAsync();
             throw;
+        }
+
+        if (entity.Status == "Approved" && previousStatus != "Approved")
+        {
+            await _audit.LogAsync(
+                action: "APPROVE_QUOTATION",
+                entity: "Quotation",
+                entityId: entity.Id.ToString(),
+                detail: $"Approved quotation #{entity.Id}.",
+                actorUserId: actorId);
         }
 
         return ToDto(entity);

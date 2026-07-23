@@ -56,11 +56,17 @@ public partial class InteriorStudioDbContext : DbContext
     public virtual DbSet<QuotationRequest> QuotationRequests { get; set; }
 
     public virtual DbSet<QuotationRequestProduct> QuotationRequestProducts { get; set; }
+public virtual DbSet<Quotation> Quotations { get; set; }
 
-    public virtual DbSet<Quotation> Quotations { get; set; }
+public virtual DbSet<QuotationProduct> QuotationProducts { get; set; }
 
-    public virtual DbSet<QuotationProduct> QuotationProducts { get; set; }
+public virtual DbSet<SystemLog> SystemLogs { get; set; }
 
+public virtual DbSet<DesignRequest> DesignRequests { get; set; }
+public virtual DbSet<DesignRequestProduct> DesignRequestProducts { get; set; }
+public virtual DbSet<DesignRequestAttachment> DesignRequestAttachments { get; set; }
+public virtual DbSet<ChatThread> ChatThreads { get; set; }
+public virtual DbSet<ChatMessage> ChatMessages { get; set; }
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Cart>(entity =>
@@ -254,6 +260,19 @@ public partial class InteriorStudioDbContext : DbContext
             entity.Property(e => e.IsActive).HasDefaultValue(true);
         });
 
+        modelBuilder.Entity<SystemLog>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.ToTable("SystemLogs");
+            entity.HasIndex(e => e.CreatedAt, "IX_SystemLogs_CreatedAt");
+            entity.HasIndex(e => e.Action, "IX_SystemLogs_Action");
+            entity.HasIndex(e => e.Entity, "IX_SystemLogs_Entity");
+            entity.Property(e => e.Action).HasMaxLength(80);
+            entity.Property(e => e.Entity).HasMaxLength(80);
+            entity.Property(e => e.EntityId).HasMaxLength(80);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(sysutcdatetime())");
+        });
+
         modelBuilder.Entity<RolePermission>(entity =>
         {
             entity.HasKey(e => new { e.RoleId, e.PageId });
@@ -442,9 +461,11 @@ public partial class InteriorStudioDbContext : DbContext
                 .HasForeignKey(d => d.ProductId)
                 .OnDelete(DeleteBehavior.ClientSetNull);
         });
-
+        modelBuilder.Entity<DesignRequestProduct>()
+            .HasKey(dp => new { dp.DesignRequestId, dp.ProductId });
         OnModelCreatingPartial(modelBuilder);
     }
 
     partial void OnModelCreatingPartial(ModelBuilder modelBuilder);
+
 }

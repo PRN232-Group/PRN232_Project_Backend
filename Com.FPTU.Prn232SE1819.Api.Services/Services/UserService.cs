@@ -10,10 +10,12 @@ namespace Com.FPTU.Prn232SE1819.Api.Services.Services;
 public class UserService : IUserService
 {
     private readonly IUnitOfWork _uow;
+    private readonly IAuditService _audit;
 
-    public UserService(IUnitOfWork uow)
+    public UserService(IUnitOfWork uow, IAuditService audit)
     {
         _uow = uow;
+        _audit = audit;
     }
 
     public async Task<UserProfileDto?> GetProfileAsync(int userId)
@@ -102,6 +104,12 @@ public class UserService : IUserService
         }
 
         user.Role = role;
+        await _audit.LogAsync(
+            action: "CREATE_USER",
+            entity: "User",
+            entityId: user.Id.ToString(),
+            detail: $"Created user {user.Email} with role {role.Name}.",
+            actorUserId: actorId);
         return ToDto(user);
     }
 
@@ -132,6 +140,13 @@ public class UserService : IUserService
             await _uow.RollbackTransactionAsync();
             throw;
         }
+
+        await _audit.LogAsync(
+            action: "UPDATE_USER_ROLE",
+            entity: "User",
+            entityId: target.Id.ToString(),
+            detail: $"Updated role to {nextRole.Name}.",
+            actorUserId: actorId);
         return ToDto(target);
     }
 
@@ -154,6 +169,13 @@ public class UserService : IUserService
             await _uow.RollbackTransactionAsync();
             throw;
         }
+
+        await _audit.LogAsync(
+            action: "LOCK_USER",
+            entity: "User",
+            entityId: target.Id.ToString(),
+            detail: isLocked ? "Locked user account." : "Unlocked user account.",
+            actorUserId: actorId);
         return ToDto(target);
     }
 
