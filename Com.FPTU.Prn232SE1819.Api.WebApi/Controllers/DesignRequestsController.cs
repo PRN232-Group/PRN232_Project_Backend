@@ -69,7 +69,7 @@ public class DesignRequestsController : ControllerBase
     {
         try
         {
-            var result = await _service.UpdateStatusAsync(id, dto.Status);
+            var result = await _service.UpdateStatusAsync(id, dto.Status, GetCurrentUserId());
             return Ok(result);
         }
         catch (KeyNotFoundException ex)

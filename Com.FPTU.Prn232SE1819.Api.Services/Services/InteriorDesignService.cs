@@ -45,8 +45,8 @@ public class InteriorDesignService : IInteriorDesignService
         try
         {
             await _uow.Repository<InteriorDesign>().InsertAsync(entity, saveChanges: false);
-            await _uow.SaveChangesAsync();
-            await ReplaceChildrenAsync(entity.Id, dto);
+            await _uow.SaveChangesAsync(); // cần Id trước khi gắn bảng con
+            await ReplaceChildrenAsync(entity.Id, dto, saveNow: false);
             await _uow.CommitTransactionAsync();
         }
         catch
@@ -70,8 +70,9 @@ public class InteriorDesignService : IInteriorDesignService
         await _uow.BeginTransactionAsync();
         try
         {
-            await _uow.Repository<InteriorDesign>().UpdateAsync(entity, saveChanges: false);
-            await ReplaceChildrenAsync(id, dto);
+            // Chỉ đánh dấu root — tránh Entities.Update() kéo cả graph con → log/cascade nhiễu
+            _uow.Repository<InteriorDesign>().Entities.Entry(entity).State = EntityState.Modified;
+            await ReplaceChildrenAsync(id, dto, saveNow: false);
             await _uow.CommitTransactionAsync();
         }
         catch
@@ -142,7 +143,7 @@ public class InteriorDesignService : IInteriorDesignService
             : dto.ImageUrl.Trim();
     }
 
-    private async Task ReplaceChildrenAsync(int designId, InteriorDesignUpsertDto dto)
+    private async Task ReplaceChildrenAsync(int designId, InteriorDesignUpsertDto dto, bool saveNow = true)
     {
         var images = await _uow.Repository<InteriorDesignImage>().Entities
             .Where(x => x.InteriorDesignId == designId).ToListAsync();
@@ -265,7 +266,8 @@ public class InteriorDesignService : IInteriorDesignService
             }
         }
 
-        await _uow.SaveChangesAsync();
+        if (saveNow)
+            await _uow.SaveChangesAsync();
     }
 
     private static InteriorDesignDetailDto ToDto(InteriorDesign d, bool includeRelatedProducts)

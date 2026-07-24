@@ -33,6 +33,7 @@ public class DesignRequestDto
     public string? Notes { get; set; }
     public string Status { get; set; } = "New";
     public DateTime CreatedAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
     public List<int> RelatedProductIds { get; set; } = new();
     public List<string> Attachments { get; set; } = new();
 }

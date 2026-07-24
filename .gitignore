@@ -364,3 +364,7 @@ FodyWeavers.xsd
 
 # Local API secrets (copy appsettings.Development.example.json → appsettings.Development.json)
 **/appsettings.Development.json
+# DB backup binaries (submit via zip locally)
+*.bak
+docs/db_export/*.bak
+

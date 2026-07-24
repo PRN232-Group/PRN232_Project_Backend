@@ -73,7 +73,16 @@ Lần đầu clone: copy `appsettings.Development.example.json` → `appsettings
 
 ## Phase 3 còn lại
 
-DesignRequests, Chat, SystemLogs, Analytics
+~~DesignRequests, Chat, SystemLogs, Analytics~~ → **đã xong** (2026-07-24)
+
+### Cleanup / QA (2026-07-24)
+
+- [x] Bỏ role/module Production (FE pages đã xóa; SQL drop `ProductionOrders`/`Deliveries` — `patch_drop_production_tables.sql`)
+- [x] Audit log: skip bảng con concept/ProductSpec; 1 action → 1 log cha (+ tóm tắt ±N dòng con)
+- [x] Analytics / doanh thu / bán chạy: BE + FE Manager wired
+- [x] FE: tắt auto mock fallback; `.env.production` = `VITE_USE_MOCK=false`
+- [x] Unit tests xUnit: RoleRanks, Analytics, Audit interceptor, DesignRequest, Order, Product, Category — **30 passed**
+- [x] FE build OK; UI My Design Requests chỉnh lại form/timeline
 
 ## Rules
 

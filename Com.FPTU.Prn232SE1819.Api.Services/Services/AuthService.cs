@@ -23,17 +23,20 @@ public class AuthService : IAuthService
     private readonly IConfiguration _config;
     private readonly IEmailSender _email;
     private readonly IPermissionService _permissions;
+    private readonly IAuditService _audit;
 
     public AuthService(
         IUnitOfWork uow,
         IConfiguration config,
         IEmailSender email,
-        IPermissionService permissions)
+        IPermissionService permissions,
+        IAuditService audit)
     {
         _uow = uow;
         _config = config;
         _email = email;
         _permissions = permissions;
+        _audit = audit;
     }
 
     public async Task<LoginResponseDto> LoginAsync(LoginRequestDto dto)
@@ -44,13 +47,44 @@ public class AuthService : IAuthService
             .FirstOrDefaultAsync(u => u.Email == email && !u.IsDeleted);
 
         if (user == null || !BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
+        {
+            await _audit.LogAsync(
+                action: "LOGIN_FAILED",
+                entity: "Auth",
+                entityId: null,
+                detail: $"Failed login for {email}.",
+                actorUserId: null);
             throw new UnauthorizedAccessException("Invalid email or password.");
+        }
         if (user.IsLocked)
+        {
+            await _audit.LogAsync(
+                action: "LOGIN_FAILED",
+                entity: "Auth",
+                entityId: user.Id.ToString(),
+                detail: $"Locked account login attempt: {email}.",
+                actorUserId: user.Id);
             throw new UnauthorizedAccessException("Account is locked.");
+        }
         if (!user.IsActive)
+        {
+            await _audit.LogAsync(
+                action: "LOGIN_FAILED",
+                entity: "Auth",
+                entityId: user.Id.ToString(),
+                detail: $"Inactive account login attempt: {email}.",
+                actorUserId: user.Id);
             throw new UnauthorizedAccessException("Account is inactive.");
+        }
 
         var pageKeys = await _permissions.GetPageKeysForRoleAsync(user.RoleId);
+
+        await _audit.LogAsync(
+            action: "LOGIN",
+            entity: "Auth",
+            entityId: user.Id.ToString(),
+            detail: $"Login success: {email} ({user.Role.Name}).",
+            actorUserId: user.Id);
 
         return new LoginResponseDto
         {
@@ -91,6 +125,13 @@ public class AuthService : IAuthService
             "Interior Studio — Mã OTP đăng ký",
             mail.Html,
             mail.Plain);
+
+        await _audit.LogAsync(
+            action: "REGISTER_REQUEST",
+            entity: "Auth",
+            entityId: null,
+            detail: $"Register OTP requested for {email}.",
+            actorUserId: null);
 
         return new MessageResponseDto { Message = "OTP đã gửi tới email. Vui lòng xác minh để hoàn tất đăng ký." };
     }
@@ -136,6 +177,13 @@ public class AuthService : IAuthService
             throw;
         }
 
+        await _audit.LogAsync(
+            action: "REGISTER",
+            entity: "Auth",
+            entityId: user.Id.ToString(),
+            detail: $"Registered customer {email}.",
+            actorUserId: user.Id);
+
         return new RegisterResponseDto { Id = user.Id, Message = "Registered successfully." };
     }
 
@@ -158,6 +206,13 @@ public class AuthService : IAuthService
             "Interior Studio — OTP quên mật khẩu",
             mail.Html,
             mail.Plain);
+
+        await _audit.LogAsync(
+            action: "FORGOT_PASSWORD",
+            entity: "Auth",
+            entityId: user.Id.ToString(),
+            detail: $"Forgot-password OTP sent to {email}.",
+            actorUserId: user.Id);
 
         return new MessageResponseDto { Message = "Nếu email tồn tại, OTP đã được gửi." };
     }
@@ -230,6 +285,13 @@ public class AuthService : IAuthService
             await _uow.RollbackTransactionAsync();
             throw;
         }
+
+        await _audit.LogAsync(
+            action: "RESET_PASSWORD",
+            entity: "Auth",
+            entityId: user.Id.ToString(),
+            detail: $"Password reset for {email}.",
+            actorUserId: user.Id);
 
         return new MessageResponseDto { Message = "Đổi mật khẩu thành công. Vui lòng đăng nhập." };
     }

@@ -31,6 +31,8 @@ public class DesignRequest
 
     public DateTime CreatedAt { get; set; }
 
+    public DateTime? UpdatedAt { get; set; }
+
     [ForeignKey(nameof(CustomerId))]
     public virtual User? Customer { get; set; }
 

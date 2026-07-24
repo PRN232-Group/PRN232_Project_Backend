@@ -21,3 +21,11 @@ public class SystemLogQueryDto
     public int Page { get; set; } = 1;
     public int PageSize { get; set; } = 20;
 }
+
+public class SystemLogPageDto
+{
+    public IList<SystemLogDto> Items { get; set; } = new List<SystemLogDto>();
+    public int Total { get; set; }
+    public int Page { get; set; }
+    public int PageSize { get; set; }
+}

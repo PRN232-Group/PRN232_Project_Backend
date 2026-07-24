@@ -1,20 +1,167 @@
-/*
-  InteriorStudio — MSSQL create script
-  Run once in SSMS / Azure Data Studio.
-  Sync: docs/MSSQL_SCHEMA.md + docs/BE_FULL_SPEC.md
-*/
-SET NOCOUNT ON;
-GO
+# MSSQL Schema — Interior Studio (đồng bộ Frontend mock)
 
-IF DB_ID(N'InteriorStudio') IS NULL
-BEGIN
-  CREATE DATABASE InteriorStudio;
-END
-GO
+> Nguồn: luồng UI → `application/services` → `mock/handlers` + `mock/data`.  
+> Naming: PascalCase, PK `Id`, soft-delete `IsDeleted`, audit `CreatedAt`/`UpdatedAt`.  
+> Roles hiện tại FE: **Customer · Sales · Manager · Admin** (không còn Production trên UI).
 
-USE InteriorStudio;
-GO
+---
 
+## A. Luồng UI → Service (tóm tắt)
+
+```
+┌─────────────┐     axios apiClient      ┌──────────────────┐
+│ Pages / UI  │ ───────────────────────► │ application/     │
+│ (role gate) │                          │ services/*.js    │
+└─────────────┘                          └────────┬─────────┘
+                                                  │
+                     ┌────────────────────────────▼────────────┐
+                     │  GET/POST/PUT/DELETE /api/...           │
+                     │  Mock: handlers.js  |  Prod: MSSQL API  │
+                     └─────────────────────────────────────────┘
+```
+
+| Role | Màn hình chính | Services chính |
+|------|----------------|----------------|
+| **Customer** | Home, Products, Design, Cart, Checkout, Orders, Profile, Chat, Review | product, cart, order, interiorDesign, user, chat, review, auth |
+| **Sales** | Dashboard, Orders, Báo giá, Duyệt BG, Design requests, Chat | analytics, order, quotation, designRequest, chat, product |
+| **Manager** | Dashboard, Products, Concept thiết kế, Categories, Prices, Best-selling, Revenue | product, category, interiorDesign, analytics |
+| **Admin** | Dashboard + full Sales/Manager + Users, Roles, Contents, Logs | user, role, content, systemLog + manager/sales |
+
+### Checkout (ràng buộc quan trọng)
+`Cart` → `POST /api/orders/checkout` → tạo `Orders` + `OrderItems` + (optional) `ProductionOrders`, trừ `Products.Stock`, xóa cart — **1 transaction**.
+
+---
+
+## B. Danh sách bảng (chi tiết)
+
+### 1. Identity / Auth
+
+| Bảng | Mục đích | Cột chính |
+|------|----------|-----------|
+| **Roles** | Catalog role | Id, Name (unique), Description |
+| **Users** | Tài khoản | Id, RoleId FK, Email unique, PasswordHash, FullName, Phone, AvatarUrl, **IsLocked**, IsActive, IsDeleted |
+| **RefreshTokens** | JWT refresh | Id, UserId FK, Token, ExpiresAt, RevokedAt |
+| **PasswordResetTokens** | Quên MK | Id, UserId FK, Token, ExpiresAt, UsedAt |
+
+> FE: khóa user = `IsLocked=1` (status Locked). Không soft-delete user khi Admin “khóa”.
+
+---
+
+### 2. Catalog
+
+| Bảng | Mục đích | Cột chính |
+|------|----------|-----------|
+| **Categories** | Danh mục SP | Id, Name, Description, IsActive |
+| **Products** | Sản phẩm | Id, CategoryId FK, Name, Description, **Price**, **MarketPrice**, Stock, ImageUrl, IsActive, IsDeleted |
+| **ProductSpecs** | Thông số 1–1 | ProductId PK/FK, Dimensions, Material, Origin, Finish, WeightKg, WarrantyMonths |
+| **ProductImages** | Gallery SP (optional) | Id, ProductId FK, Url, SortOrder |
+
+---
+
+### 3. Cart / Order / Review
+
+| Bảng | Mục đích | Cột chính |
+|------|----------|-----------|
+| **Carts** | Giỏ theo user | Id, UserId unique FK |
+| **CartItems** | Dòng giỏ | Id, CartId FK, ProductId FK, Quantity (UQ CartId+ProductId) |
+| **Orders** | Đơn hàng | Id, CustomerId FK, Status, TotalPrice, ShippingAddress, Phone, Note, CreatedAt |
+| **OrderItems** | Snapshot dòng đơn | Id, OrderId FK, ProductId FK, ProductName, UnitPrice, Quantity |
+| **ProductReviews** | Đánh giá | Id, ProductId FK, UserId FK, Rating 1–5, Comment (UQ ProductId+UserId) |
+
+**Order.Status:** `Pending` \| `Processing` \| `Shipping` \| `Completed` \| `Cancelled`
+
+---
+
+### 4. Sales — Báo giá / Yêu cầu thiết kế
+
+| Bảng | Mục đích | Cột chính |
+|------|----------|-----------|
+| **QuotationRequests** | Yêu cầu BG từ khách | Id, CustomerId FK, Title, Description, Status, Reply, HandledById FK?, CreatedAt |
+| **QuotationRequestProducts** | SP gắn YC | QuotationRequestId FK, ProductId FK (PK ghép) |
+| **Quotations** | Báo giá / duyệt | Id, QuotationRequestId FK?, CustomerId FK, Title, Amount, Status, Notes, CreatedById?, ApprovedById? |
+| **QuotationProducts** | SP trong BG | QuotationId FK, ProductId FK, Quantity, UnitPrice? |
+| **DesignRequests** | YC thiết kế | Id, CustomerId FK, Title, Style, InteriorDesignId FK?, Budget, Status, Notes, AssignedToId? |
+| **DesignRequestProducts** | SP liên quan YC | DesignRequestId FK, ProductId FK |
+| **DesignRequestAttachments** | File đính kèm | Id, DesignRequestId FK, Url |
+
+**QuotationRequest.Status:** `Pending` \| `Replied`  
+**Quotation.Status:** `PendingApproval` \| `Approved` \| `Rejected`  
+**DesignRequest.Status:** `New` \| `InReview` \| `Quoted` \| `Done`
+
+---
+
+### 5. Concept thiết kế (storefront + Manager CRUD)
+
+| Bảng | Mục đích | Cột chính |
+|------|----------|-----------|
+| **InteriorDesigns** | Concept | Id, Title, Category, Style, ImageUrl, Description, AreaSqm, BudgetFrom, BudgetTo, TimelineWeeks, StudioPrice, MarketAvgPrice, IsPublished |
+| **InteriorDesignImages** | Gallery | Id, InteriorDesignId FK, Url, SortOrder |
+| **InteriorDesignHighlights** | Bullet nổi bật | Id, InteriorDesignId FK, Text, SortOrder |
+| **InteriorDesignSpecs** | Spec label/value | Id, InteriorDesignId FK, Label, Value, SortOrder |
+| **InteriorDesignMaterials** | Vật liệu | Id, InteriorDesignId FK, Name, Origin, Finish, Care |
+| **InteriorDesignPackages** | Gói giá | Id, InteriorDesignId FK, Name, Price, Includes |
+| **InteriorDesignProducts** | SP liên quan | InteriorDesignId FK, ProductId FK |
+
+**InteriorDesigns.Category:** `Living` \| `Bedroom` \| `Workspace` \| `Kitchen`
+
+---
+
+### 6. Chat CSKH
+
+| Bảng | Mục đích | Cột chính |
+|------|----------|-----------|
+| **ChatThreads** | 1 thread / customer | Id, CustomerId unique FK |
+| **ChatMessages** | Tin nhắn | Id, ThreadId FK, SenderId FK, SenderRole (`Customer`/`Sales`), Content, CreatedAt |
+
+---
+
+### 7. Production / Delivery (FE còn service; role Production đã gỡ khỏi UI)
+
+| Bảng | Mục đích | Cột chính |
+|------|----------|-----------|
+| **ProductionOrders** | Lệnh SX từ Order | Id, OrderId FK, Status, ProgressStatus?, ProgressPercent, Deadline, AssignedToId? |
+| **Deliveries** | Giao hàng | Id, OrderId unique FK, DeliveryStatus, Note, DeliveredAt |
+
+**ProductionOrders.Status:** `Queued` \| `InProgress` \| `Done` \| `Blocked`  
+**Deliveries.DeliveryStatus:** `Preparing` \| `OutForDelivery` \| `Delivered` \| `Failed`
+
+---
+
+### 8. CMS / Logs
+
+| Bảng | Mục đích | Cột chính |
+|------|----------|-----------|
+| **Contents** | Blog / CMS | Id, Title, Slug unique, Type, Body, CoverUrl, IsPublished, PublishedAt |
+| **SystemLogs** | Audit Admin | Id BIGINT, ActorUserId FK?, Action, Entity, EntityId, Detail, CreatedAt |
+
+---
+
+## C. Quan hệ (ER rút gọn)
+
+```
+Roles 1──* Users
+Users 1──1 Carts 1──* CartItems *──1 Products
+Users 1──* Orders 1──* OrderItems *──1 Products
+Users 1──* ProductReviews *──1 Products
+Categories 1──* Products 1──0..1 ProductSpecs
+
+Users 1──* QuotationRequests 1──* QuotationRequestProducts *──1 Products
+QuotationRequests 0..1──* Quotations 1──* QuotationProducts *──1 Products
+
+Users 1──* DesignRequests *──0..1 InteriorDesigns
+InteriorDesigns 1──* (Images|Highlights|Specs|Materials|Packages)
+InteriorDesigns *──* Products (InteriorDesignProducts)
+
+Users 1──1 ChatThreads 1──* ChatMessages
+Orders 1──0..1 ProductionOrders
+Orders 1──0..1 Deliveries
+```
+
+---
+
+## D. Script CREATE (MSSQL) — bản cập nhật theo FE
+
+```sql
 /* ===== IDENTITY ===== */
 CREATE TABLE Roles (
   Id          INT IDENTITY(1,1) PRIMARY KEY,
@@ -31,8 +178,7 @@ CREATE TABLE Users (
   FullName     NVARCHAR(150) NOT NULL,
   Phone        NVARCHAR(30)  NULL,
   AvatarUrl    NVARCHAR(500) NULL,
-  Address      NVARCHAR(500) NULL, -- profile
-  IsLocked     BIT           NOT NULL DEFAULT 0,
+  IsLocked     BIT           NOT NULL DEFAULT 0, -- FE: khóa/mở khóa
   IsActive     BIT           NOT NULL DEFAULT 1,
   IsDeleted    BIT           NOT NULL DEFAULT 0,
   CreatedAt    DATETIME2     NOT NULL DEFAULT SYSUTCDATETIME(),
@@ -56,19 +202,6 @@ CREATE TABLE PasswordResetTokens (
   UsedAt    DATETIME2     NULL
 );
 
-CREATE TABLE EmailOtps (
-  Id         INT IDENTITY(1,1) PRIMARY KEY,
-  Email      NVARCHAR(256) NOT NULL,
-  Purpose    NVARCHAR(30)  NOT NULL, -- Register | ResetPassword
-  Otp        NVARCHAR(10)  NOT NULL,
-  Payload    NVARCHAR(MAX) NULL,     -- JSON pending register
-  ResetToken NVARCHAR(128) NULL,
-  ExpiresAt  DATETIME2     NOT NULL,
-  UsedAt     DATETIME2     NULL,
-  CreatedAt  DATETIME2     NOT NULL DEFAULT SYSDATETIME()
-);
-GO
-
 /* ===== CATALOG ===== */
 CREATE TABLE Categories (
   Id          INT IDENTITY(1,1) PRIMARY KEY,
@@ -83,11 +216,11 @@ CREATE TABLE Products (
   CategoryId  INT            NULL REFERENCES Categories(Id),
   Name        NVARCHAR(200)  NOT NULL,
   Description NVARCHAR(MAX)  NULL,
-  Price       DECIMAL(18,2)  NOT NULL CHECK (Price >= 0),
+  Price       DECIMAL(18,2)  NOT NULL CHECK (Price >= 0),       -- giá studio
   MarketPrice DECIMAL(18,2)  NULL CHECK (MarketPrice IS NULL OR MarketPrice >= 0),
   Stock       INT            NOT NULL DEFAULT 0 CHECK (Stock >= 0),
   ImageUrl    NVARCHAR(500)  NULL,
-  IsActive    BIT            NOT NULL DEFAULT 1,
+  IsActive    BIT            NOT NULL DEFAULT 1, -- hiện storefront
   IsDeleted   BIT            NOT NULL DEFAULT 0,
   CreatedAt   DATETIME2      NOT NULL DEFAULT SYSUTCDATETIME(),
   UpdatedAt   DATETIME2      NULL
@@ -132,8 +265,6 @@ CREATE TABLE Orders (
   TotalPrice      DECIMAL(18,2)  NOT NULL,
   ShippingAddress NVARCHAR(500)  NOT NULL,
   Phone           NVARCHAR(30)   NOT NULL,
-  CustomerName    NVARCHAR(150)  NULL, -- snapshot checkout
-  CustomerEmail   NVARCHAR(256)  NULL, -- snapshot checkout
   Note            NVARCHAR(500)  NULL,
   CreatedAt       DATETIME2      NOT NULL DEFAULT SYSUTCDATETIME(),
   UpdatedAt       DATETIME2      NULL
@@ -218,10 +349,10 @@ CREATE TABLE InteriorDesigns (
 );
 
 CREATE TABLE InteriorDesignImages (
-  Id               INT IDENTITY(1,1) PRIMARY KEY,
-  InteriorDesignId INT           NOT NULL REFERENCES InteriorDesigns(Id) ON DELETE CASCADE,
-  Url              NVARCHAR(500) NOT NULL,
-  SortOrder        INT           NOT NULL DEFAULT 0
+  Id                INT IDENTITY(1,1) PRIMARY KEY,
+  InteriorDesignId  INT           NOT NULL REFERENCES InteriorDesigns(Id) ON DELETE CASCADE,
+  Url               NVARCHAR(500) NOT NULL,
+  SortOrder         INT           NOT NULL DEFAULT 0
 );
 
 CREATE TABLE InteriorDesignHighlights (
@@ -304,7 +435,7 @@ CREATE TABLE ChatMessages (
   CreatedAt  DATETIME2     NOT NULL DEFAULT SYSUTCDATETIME()
 );
 
-/* ===== PRODUCTION / DELIVERY ===== */
+/* ===== PRODUCTION / DELIVERY (optional module) ===== */
 CREATE TABLE ProductionOrders (
   Id              INT IDENTITY(1,1) PRIMARY KEY,
   OrderId         INT          NOT NULL REFERENCES Orders(Id),
@@ -349,7 +480,6 @@ CREATE TABLE SystemLogs (
   Detail      NVARCHAR(MAX)  NULL,
   CreatedAt   DATETIME2      NOT NULL DEFAULT SYSUTCDATETIME()
 );
-GO
 
 /* ===== SEED ROLES ===== */
 INSERT INTO Roles (Name, Description) VALUES
@@ -357,70 +487,53 @@ INSERT INTO Roles (Name, Description) VALUES
  (N'Sales',    N'Nhân viên kinh doanh'),
  (N'Manager',  N'Quản lý catalog / doanh thu'),
  (N'Admin',    N'Quản trị hệ thống');
-GO
 
 /* ===== INDEXES ===== */
 CREATE INDEX IX_Users_RoleId ON Users(RoleId);
-CREATE INDEX IX_Users_IsLocked ON Users(IsLocked);
 CREATE INDEX IX_Products_Category ON Products(CategoryId);
 CREATE INDEX IX_Products_IsActive ON Products(IsActive) WHERE IsDeleted = 0;
-CREATE INDEX IX_Products_Name ON Products(Name);
-CREATE INDEX IX_CartItems_ProductId ON CartItems(ProductId);
 CREATE INDEX IX_Orders_Customer ON Orders(CustomerId);
 CREATE INDEX IX_Orders_Status ON Orders(Status);
-CREATE INDEX IX_Orders_CreatedAt ON Orders(CreatedAt DESC);
 CREATE INDEX IX_OrderItems_Order ON OrderItems(OrderId);
 CREATE INDEX IX_QuotationRequests_Customer ON QuotationRequests(CustomerId);
 CREATE INDEX IX_Quotations_Status ON Quotations(Status);
 CREATE INDEX IX_DesignRequests_Status ON DesignRequests(Status);
 CREATE INDEX IX_ChatMessages_Thread ON ChatMessages(ThreadId);
-CREATE INDEX IX_ChatMessages_CreatedAt ON ChatMessages(CreatedAt);
 CREATE INDEX IX_SystemLogs_CreatedAt ON SystemLogs(CreatedAt DESC);
-CREATE INDEX IX_SystemLogs_Actor ON SystemLogs(ActorUserId);
 CREATE INDEX IX_InteriorDesigns_Category ON InteriorDesigns(Category);
-CREATE INDEX IX_InteriorDesigns_IsPublished ON InteriorDesigns(IsPublished);
-CREATE INDEX IX_RefreshTokens_UserId ON RefreshTokens(UserId);
-CREATE INDEX IX_PasswordReset_Token ON PasswordResetTokens(Token);
-CREATE INDEX IX_ProductionOrders_OrderId ON ProductionOrders(OrderId);
-CREATE INDEX IX_ProductionOrders_Status ON ProductionOrders(Status);
-GO
+```
 
-/* ===== APP PAGE PERMISSIONS (FE route ACL) ===== */
--- Trang chủ (/) và tổng quan (/admin|/manager|/sales) không nằm trong bảng này.
-IF OBJECT_ID(N'dbo.AppPages', N'U') IS NULL
-BEGIN
-  CREATE TABLE AppPages (
-    Id          INT IDENTITY(1,1) PRIMARY KEY,
-    PageKey     NVARCHAR(120) NOT NULL UNIQUE,
-    Name        NVARCHAR(150) NOT NULL,
-    Section     NVARCHAR(30)  NOT NULL,
-    SortOrder   INT NOT NULL DEFAULT 0,
-    IsActive    BIT NOT NULL DEFAULT 1
-  );
-END
+---
 
-IF OBJECT_ID(N'dbo.RolePermissions', N'U') IS NULL
-BEGIN
-  CREATE TABLE RolePermissions (
-    RoleId INT NOT NULL REFERENCES Roles(Id) ON DELETE CASCADE,
-    PageId INT NOT NULL REFERENCES AppPages(Id) ON DELETE CASCADE,
-    CONSTRAINT PK_RolePermissions PRIMARY KEY (RoleId, PageId)
-  );
-  CREATE INDEX IX_RolePermissions_PageId ON RolePermissions(PageId);
-END
-GO
+## E. Checklist map FE field → cột DB
 
+| FE (mock) | DB |
+|-----------|-----|
+| `product.marketPrice` | `Products.MarketPrice` |
+| `product.specs.*` | `ProductSpecs` |
+| `user.isLocked` / `status=Locked` | `Users.IsLocked` |
+| `interiorDesign.gallery[]` | `InteriorDesignImages` |
+| `interiorDesign.highlights[]` | `InteriorDesignHighlights` |
+| `interiorDesign.specs[]` | `InteriorDesignSpecs` |
+| `interiorDesign.materials[]` | `InteriorDesignMaterials` |
+| `interiorDesign.packages[]` | `InteriorDesignPackages` |
+| `interiorDesign.priceCompare.studio/marketAvg` | `StudioPrice` / `MarketAvgPrice` |
+| `relatedProductIds` / `productIds` | bảng junction `*Products` |
+| `order.items[].price` | `OrderItems.UnitPrice` |
+| Chat `senderRole` | `ChatMessages.SenderRole` |
 
-/* ===== SEED ADMIN USER ===== */
--- Password plain: Admin@123
--- Thay @PasswordHash bằng BCrypt hash thật từ BE (ASP.NET Identity / BCrypt.Net).
-DECLARE @AdminRoleId INT = (SELECT Id FROM Roles WHERE Name = N'Admin');
-DECLARE @PasswordHash NVARCHAR(512) = N'$2a$11$REPLACE_WITH_BCRYPT_HASH_OF_Admin@123';
+---
 
-IF @AdminRoleId IS NOT NULL
-  AND NOT EXISTS (SELECT 1 FROM Users WHERE Email = N'ngthanhtrung302005@gmail.com')
-BEGIN
-  INSERT INTO Users (RoleId, Email, PasswordHash, FullName, Phone, IsLocked, IsActive, IsDeleted)
-  VALUES (@AdminRoleId, N'ngthanhtrung302005@gmail.com', @PasswordHash, N'trung', N'0352241327', 0, 1, 0);
-END
-GO
+## F. Thứ tự tạo DB gợi ý
+
+1. Roles → Users → tokens  
+2. Categories → Products → ProductSpecs / ProductImages  
+3. Carts → CartItems  
+4. Orders → OrderItems → Reviews  
+5. InteriorDesigns + child tables + InteriorDesignProducts  
+6. Quotation* / DesignRequest*  
+7. Chat*  
+8. ProductionOrders / Deliveries (nếu cần)  
+9. Contents / SystemLogs  
+
+File này: `docs/MSSQL_SCHEMA.md`. Có thể copy block SQL sang SSMS / Azure Data Studio để chạy.

@@ -64,9 +64,9 @@ public class AnalyticsService : IAnalyticsService
                 Revenue = g.Sum(x => x.UnitPrice * x.Quantity),
             }).ToListAsync();
 
-        return rows.Select((r, i) => new BestSellingProductDto
+        return rows.Select(r => new BestSellingProductDto
         {
-            Id = i + 1,
+            Id = r.ProductId,
             ProductId = r.ProductId,
             Name = r.ProductName,
             Sold = r.SoldQuantity,
@@ -114,8 +114,8 @@ public class AnalyticsService : IAnalyticsService
         {
             PendingOrders = await orders.CountAsync(o => o.Status == "Pending"),
             Quotations = await quotationList.CountAsync(),
-            DesignRequests = 0,
-            Chats = 0,
+            DesignRequests = await _uow.Repository<DesignRequest>().Entities.CountAsync(),
+            Chats = await _uow.Repository<ChatThread>().Entities.CountAsync(),
             Stats = new SalesStatsDto
             {
                 ProcessingOrders = await orders.CountAsync(o => o.Status == "Processing"),

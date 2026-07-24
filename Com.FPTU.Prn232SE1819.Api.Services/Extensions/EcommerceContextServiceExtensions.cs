@@ -4,6 +4,7 @@ using Com.FPTU.Prn232SE1819.Api.Application.Interfaces.Common;
 using Com.FPTU.Prn232SE1819.Api.Application.Interfaces.Repositories;
 using Com.FPTU.Prn232SE1819.Api.Application.Interfaces.Services;
 using Com.FPTU.Prn232SE1819.Api.Entity.Models;
+using Com.FPTU.Prn232SE1819.Api.Services.Interceptors;
 using Com.FPTU.Prn232SE1819.Api.Services.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -15,10 +16,14 @@ public static class EcommerceContextServiceExtensions
 {
     public static IServiceCollection EcommerceInfrastructureDatabase(this IServiceCollection services, IConfiguration config)
     {
-        services.AddDbContext<InteriorStudioDbContext>(options =>
+        services.AddHttpContextAccessor();
+        services.AddScoped<AuditSaveChangesInterceptor>();
+
+        services.AddDbContext<InteriorStudioDbContext>((sp, options) =>
         {
             options.UseSqlServer(config.GetConnectionString("InteriorStudioDbConn"),
                 sqlOptions => sqlOptions.CommandTimeout(60));
+            options.AddInterceptors(sp.GetRequiredService<AuditSaveChangesInterceptor>());
         });
 
         services.AddScoped<Func<InteriorStudioDbContext>>(
@@ -48,16 +53,14 @@ public static class EcommerceContextServiceExtensions
         services.AddScoped<IQuotationRequestService, QuotationRequestService>();
         services.AddScoped<IQuotationService, QuotationService>();
         services.AddScoped<IAnalyticsService, AnalyticsService>();
-        
-   services.AddScoped<IAnalyticsService, AnalyticsService>();
 
-services.AddScoped<SystemLogService>();
-services.AddScoped<ISystemLogService>(sp => sp.GetRequiredService<SystemLogService>());
-services.AddScoped<IAuditService>(sp => sp.GetRequiredService<SystemLogService>());
+        services.AddScoped<SystemLogService>();
+        services.AddScoped<ISystemLogService>(sp => sp.GetRequiredService<SystemLogService>());
+        services.AddScoped<IAuditService>(sp => sp.GetRequiredService<SystemLogService>());
 
-services.AddScoped<IDesignRequestService, DesignRequestService>();
-services.AddScoped<IChatService, ChatService>();
+        services.AddScoped<IDesignRequestService, DesignRequestService>();
+        services.AddScoped<IChatService, ChatService>();
 
-return services;
+        return services;
     }
 }

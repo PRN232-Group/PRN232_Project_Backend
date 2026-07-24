@@ -13,23 +13,23 @@ public class SystemLogService : ISystemLogService, IAuditService
 
     public SystemLogService(IUnitOfWork uow) => _uow = uow;
 
-    public async Task<IList<SystemLogDto>> GetAllAsync(SystemLogQueryDto query)
+    public async Task<SystemLogPageDto> GetAllAsync(SystemLogQueryDto query)
     {
         var page = query.Page <= 0 ? 1 : query.Page;
-        var pageSize = query.PageSize <= 0 ? 20 : Math.Min(query.PageSize, 200);
+        var pageSize = query.PageSize <= 0 ? 20 : Math.Min(query.PageSize, 50);
 
-        var q = _uow.Repository<SystemLog>().Entities.AsQueryable();
+        var q = _uow.Repository<SystemLog>().Entities.AsNoTracking().AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(query.Action))
         {
             var action = query.Action.Trim();
-            q = q.Where(x => x.Action == action);
+            q = q.Where(x => x.Action.Contains(action));
         }
 
         if (!string.IsNullOrWhiteSpace(query.Entity))
         {
             var entity = query.Entity.Trim();
-            q = q.Where(x => x.Entity == entity);
+            q = q.Where(x => x.Entity.Contains(entity));
         }
 
         if (query.From.HasValue)
@@ -37,6 +37,8 @@ public class SystemLogService : ISystemLogService, IAuditService
 
         if (query.To.HasValue)
             q = q.Where(x => x.CreatedAt <= query.To.Value);
+
+        var total = await q.CountAsync();
 
         var logs = await q
             .OrderByDescending(x => x.CreatedAt)
@@ -52,17 +54,27 @@ public class SystemLogService : ISystemLogService, IAuditService
 
         var actorNames = actorIds.Count == 0
             ? new Dictionary<int, string>()
-            : await _uow.Repository<User>().Entities
+            : await _uow.Repository<User>().Entities.AsNoTracking()
                 .Where(u => actorIds.Contains(u.Id))
-                .ToDictionaryAsync(u => u.Id, u => u.FullName);
+                .ToDictionaryAsync(
+                    u => u.Id,
+                    u => string.IsNullOrWhiteSpace(u.FullName) ? u.Email : u.FullName!);
 
-        return logs.Select(x =>
+        var items = logs.Select(x =>
         {
             string? actorName = null;
             if (x.ActorUserId is int actorId && actorNames.TryGetValue(actorId, out var name))
                 actorName = name;
             return ToDto(x, actorName);
         }).ToList();
+
+        return new SystemLogPageDto
+        {
+            Items = items,
+            Total = total,
+            Page = page,
+            PageSize = pageSize,
+        };
     }
 
     public async Task LogAsync(string action, string entity, string? entityId, string? detail, int? actorUserId)
